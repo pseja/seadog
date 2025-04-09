@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C Dependency Graph Viewer</title>
+    <title>SeaDog</title>
     <!-- D3.js library for data visualization -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
@@ -15,6 +15,8 @@
             overflow: hidden;
             height: 100%;
             font-family: sans-serif;
+            background-color: #1e1e2e;
+            color: #cdd6f4;
         }
 
         #container {
@@ -25,8 +27,8 @@
 
         #left {
             width: 62%;
-            background: white;
-            border-right: 1px solid #ccc;
+            background: #181825;
+            border-right: 1px solid #313244;
         }
 
         #right {
@@ -35,21 +37,25 @@
             flex-direction: column;
             padding: 1em;
             box-sizing: border-box;
+            background: #1e1e2e;
         }
 
         #graph {
             width: 100%;
             height: 100%;
+            background: #181825;
         }
 
         #editor {
             height: 100%;
-            border: 1px solid #ccc;
+            border: 1px solid #313244;
             border-radius: 5px;
             padding: 1em;
             white-space: pre-wrap;
             overflow-y: auto;
             margin-bottom: 1em;
+            background: #1e1e2e;
+            color: #cdd6f4;
         }
 
         #controls {
@@ -58,10 +64,32 @@
             margin-top: auto;
         }
 
-        #rescan_button,
         #folder_input {
+            display: none;
+        }
+
+        #custom_folder_input,
+        #rescan_button {
             flex: 1;
             cursor: pointer;
+            padding: 0.5em 1em;
+            border: 1px solid #313244;
+            border-radius: 5px;
+            background-color: #181825;
+            color: #cdd6f4;
+            font-weight: bold;
+            text-align: center;
+            text-transform: none;
+            font-size: 1rem;
+            line-height: 1.5;
+            display: inline-block;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        #custom_folder_input:hover,
+        #rescan_button:hover {
+            background-color: #313244;
+            color: #f5c2e7;
         }
     </style>
 </head>
@@ -74,6 +102,7 @@
         <div id="right">
             <div id="editor" contenteditable="true"></div>
             <div id="controls">
+                <label for="folder_input" id="custom_folder_input">Browse</label>
                 <input type="file" id="folder_input" webkitdirectory multiple />
                 <button id="rescan_button">Rescan</button>
             </div>
@@ -157,24 +186,23 @@
                 .force("center", d3.forceCenter(width / 2, height / 2));
 
             const link = g.append("g")
-                .attr("stroke", "#aaa")
+                .attr("stroke", "#b4befe") // Lavender stroke for links
                 .selectAll("line")
                 .data(data.links)
                 .enter().append("line")
                 .attr("stroke-width", 1.5);
 
             const node = g.append("g")
-                .attr("stroke", "#fff")
-                .attr("stroke-width", 1.5)
                 .selectAll("circle")
                 .data(data.nodes)
                 .enter().append("circle")
                 .attr("r", 10)
                 .attr("fill", d => {
-                    if (!file_map.has(d.id)) return "red";        // external lib
-                    if (d.id.endsWith(".h")) return "gold";      // header file
-                    if (d.id.endsWith(".c")) return "purple";    // source file
-                    return "gray";
+                    // Maroon for external lib, Teal for header file, Blue for source file, Subtext 0 for others
+                    if (!file_map.has(d.id)) return "#eba0ac";
+                    if (d.id.endsWith(".h")) return "#94e2d5";
+                    if (d.id.endsWith(".c")) return "#89b4fa";
+                    return "#a6adc8";
                 })
                 .on("click", showFile)
                 .on("mouseover", showFile)
@@ -187,7 +215,8 @@
                 .text(d => d.id)
                 .attr("font-size", "10px")
                 .attr("dx", 12)
-                .attr("dy", 4);
+                .attr("dy", 4)
+                .attr("fill", "#cdd6f4");
 
             simulation.on("tick", () => {
                 link
