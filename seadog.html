@@ -37,6 +37,7 @@ License: MIT
             width: 62%;
             background: #181825;
             border-right: 1px solid #313244;
+            position: relative;
         }
 
         #right {
@@ -77,7 +78,8 @@ License: MIT
         }
 
         #custom_folder_input,
-        #rescan_button {
+        #reload_button,
+        #screenshot_button {
             flex: 1;
             cursor: pointer;
             padding: 0.5em 1em;
@@ -95,9 +97,45 @@ License: MIT
         }
 
         #custom_folder_input:hover,
-        #rescan_button:hover {
+        #reload_button:hover,
+        #screenshot_button:hover {
             background-color: #313244;
-            color: #f5c2e7;
+            color: #cba6f7;
+        }
+
+        #center_graph_button {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            z-index: 100;
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border: 2px solid #313244;
+            border-radius: 5px;
+            background-color: #181825;
+            color: #cdd6f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0.7;
+            transition: opacity 0.3s, background-color 0.3s, border-color 0.3s;
+        }
+
+        #center_graph_button:hover {
+            opacity: 1;
+            background-color: #313244;
+            border-color: #cba6f7;
+        }
+
+        #center_graph_button svg {
+            width: 24px;
+            height: 24px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
     </style>
 </head>
@@ -106,13 +144,23 @@ License: MIT
     <div id="container">
         <div id="left">
             <svg id="graph"></svg>
+            <button id="center_graph_button">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M 4,4 L 4,8 M 4,4 L 8,4"></path>
+                    <path d="M 20,4 L 16,4 M 20,4 L 20,8"></path>
+                    <path d="M 4,20 L 8,20 M 4,20 L 4,16"></path>
+                    <path d="M 20,20 L 20,16 M 20,20 L 16,20"></path>
+                </svg>
+            </button>
         </div>
         <div id="right">
             <div id="editor" contenteditable="true"></div>
             <div id="controls">
                 <label for="folder_input" id="custom_folder_input">Browse</label>
                 <input type="file" id="folder_input" webkitdirectory multiple />
-                <button id="rescan_button">Rescan</button>
+                <button id="reload_button">Reload</button>
+                <button id="screenshot_button">Screenshot</button>
             </div>
         </div>
     </div>
@@ -121,15 +169,21 @@ License: MIT
         const include_regex = /^\s*#include\s+["<](.+)[">]/;
         let file_map = new Map();
         let last_files = [];
+        let graph_zoom;
 
         document.getElementById("folder_input").addEventListener("change", event => {
             last_files = Array.from(event.target.files);
             processFiles(last_files);
         });
 
-        document.getElementById("rescan_button").addEventListener("click", () => {
-            if (last_files.length > 0) processFiles(last_files);
+        document.getElementById("reload_button").addEventListener("click", () => {
+            if (last_files.length > 0) {
+                processFiles(last_files);
+            }
         });
+
+        document.getElementById("screenshot_button").addEventListener("click", takeScreenshot);
+        document.getElementById("center_graph_button").addEventListener("click", centerGraph);
 
         async function processFiles(files) {
             file_map = new Map();
@@ -171,6 +225,46 @@ License: MIT
             drawGraph({ nodes, links });
         }
 
+        function centerGraph() {
+            const svg = d3.select("#graph");
+            const width = svg.node().clientWidth;
+            const height = svg.node().clientHeight;
+
+            const nodes = d3.selectAll("#graph circle").data();
+            if (!nodes.length) return;
+
+            let min_x = Infinity, max_x = -Infinity, min_y = Infinity, max_y = -Infinity;
+
+            nodes.forEach(node => {
+                min_x = Math.min(min_x, node.x || 0);
+                max_x = Math.max(max_x, node.x || 0);
+                min_y = Math.min(min_y, node.y || 0);
+                max_y = Math.max(max_y, node.y || 0);
+            });
+
+            // TODO: let the user adjust the padding later
+            const padding = 0.1;
+            const dx = max_x - min_x;
+            const dy = max_y - min_y;
+            const centerX = (min_x + max_x) / 2;
+            const centerY = (min_y + max_y) / 2;
+
+            const scale = 0.9 * Math.min(
+                width / (dx * (1 + padding * 2)),
+                height / (dy * (1 + padding * 2))
+            );
+
+            svg.transition()
+                .duration(750)
+                .call(
+                    graph_zoom.transform,
+                    d3.zoomIdentity
+                        .translate(width / 2, height / 2)
+                        .scale(scale)
+                        .translate(-centerX, -centerY)
+                );
+        }
+
         function drawGraph(data) {
             const svg = d3.select("#graph");
             svg.selectAll("*").remove();
@@ -178,13 +272,13 @@ License: MIT
             const width = svg.node().clientWidth;
             const height = svg.node().clientHeight;
 
-            const zoom = d3.zoom()
+            graph_zoom = d3.zoom()
                 .scaleExtent([0.1, 5])
                 .on("zoom", (event) => {
                     g.attr("transform", event.transform);
                 });
 
-            svg.call(zoom);
+            svg.call(graph_zoom);
 
             const g = svg.append("g");
 
@@ -281,6 +375,69 @@ License: MIT
             }
 
             simulation.alpha(1).restart();
+        }
+
+        function takeScreenshot() {
+            const svg = document.getElementById("graph");
+
+            // TODO: maybe add some selector for this so that the user can select their own scale factor if the image 
+            // is too big or small for them with the default scale factor
+            const scale_factor = 5;
+            const width = svg.clientWidth * scale_factor;
+            const height = svg.clientHeight * scale_factor;
+
+            const g = svg.querySelector("g");
+            if (!g) {
+                return
+            };
+            const transform = g.getAttribute("transform");
+
+            const svg_clone = svg.cloneNode(true);
+            svg_clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+            svg_clone.setAttribute("version", "1.1");
+            svg_clone.setAttribute("width", width);
+            svg_clone.setAttribute("height", height);
+
+            const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            rect.setAttribute("width", "100%");
+            rect.setAttribute("height", "100%");
+            rect.setAttribute("fill", "#1e1e2e");
+            svg_clone.insertBefore(rect, svg_clone.firstChild);
+
+            const g_clone = svg_clone.querySelector("g");
+            if (g_clone) {
+                let newTransform = `scale(${scale_factor})`;
+                if (transform) {
+                    newTransform = `${transform} scale(${scale_factor})`;
+                }
+                g_clone.setAttribute("transform", newTransform);
+            }
+
+            const serializer = new XMLSerializer();
+            const svg_string = serializer.serializeToString(svg_clone);
+
+            const svg_blob = new Blob([svg_string], { type: "image/svg+xml;charset=utf-8" });
+            const svg_url = URL.createObjectURL(svg_blob);
+
+            const img = new Image();
+            img.onload = function () {
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                ctx.fillStyle = "#1e1e2e";
+                ctx.fillRect(0, 0, width, height);
+                ctx.drawImage(img, 0, 0);
+
+                const img_url = canvas.toDataURL("image/png");
+                const download_link = document.createElement("a");
+                download_link.download = `seadog-graph-${new Date().toISOString().slice(0, 10)}.png`;
+                download_link.href = img_url;
+                download_link.click();
+
+                URL.revokeObjectURL(svg_url);
+            };
+            img.src = svg_url;
         }
     </script>
 </body>
