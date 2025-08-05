@@ -2,8 +2,6 @@
 
 One file client-side web app to visualize C file dependencies using an interactive force directed graph. This tool helps developers understand and analyze the relationships between C/C++ source files in a project.
 
-[]()
-
 ## Features
 - **Interactive Visualization**: Displays C file dependencies as a force-directed graph.
 - **Client-Side Only**: No server required; everything runs in the browser.
@@ -21,3 +19,6 @@ One file client-side web app to visualize C file dependencies using an interacti
 - Inspired by [Obsidian's Graph view](https://help.obsidian.md/plugins/graph).
 - Special thanks to the [D3.js open-source JavaScript library](https://d3js.org/) for graph visualization.
 
+## Example visuzalization
+[Curl main branch](https://github.com/curl/curl)
+![curl main branch image](imgs/curl-visualization.png)
