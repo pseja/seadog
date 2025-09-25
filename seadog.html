@@ -188,7 +188,10 @@ License: MIT
         async function processFiles(files) {
             file_map = new Map();
             for (const file of files) {
-                if (file.name.endsWith(".c") || file.name.endsWith(".h") || file.name.endsWith(".cpp") || file.name.endsWith(".hpp")) {
+                if (file.name.endsWith(".c") || file.name.endsWith(".h") 
+                    || file.name.endsWith(".cc") || file.name.endsWith(".hh") 
+                    || file.name.endsWith(".cpp") || file.name.endsWith(".hpp")
+                   ) {
                     const content = await file.text();
                     file_map.set(file.webkitRelativePath, content);
                 }
